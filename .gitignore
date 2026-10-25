@@ -1,0 +1,22 @@
+# Keep this public repository source-only.
+.venv/
+.cache/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+.env
+.env.*
+!.env.example
+*.log
+# Competition datasets and private submissions
+dataset/
+submission/
+# Cached activations, model checkpoints, and generated experiment outputs
+artifacts/
+*.pt
+*.pth
+*.pkl
+*.npy
+*.npz
+*.parquet

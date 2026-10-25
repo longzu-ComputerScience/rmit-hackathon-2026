@@ -1,0 +1,10 @@
+# PyTorch 2.9.1+cpu is provided by the host; install its matching wheel for other devices.
+transformers==4.57.6
+huggingface-hub==0.36.2
+safetensors==0.8.0
+tokenizers==0.22.2
+numpy==2.2.6
+pandas==2.3.3
+scikit-learn==1.7.2
+scipy==1.16.3
+psutil==7.1.3
