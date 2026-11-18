@@ -5,7 +5,6 @@ import json
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
 
 import numpy as np
 
@@ -65,28 +64,23 @@ def main():
         summary.append(select_decision_rule({"name":name,"weight_power":weight,"macro_f1":best["macro_f1"],"epoch":best["epoch"],"learning_rate":5e-5}))
         c.dump(c.ROOT / "artifacts/experiments/comparison.json", summary)
     selected = max(summary, key=lambda row:row["macro_f1"])
-    selected_history = read(c.ROOT / "artifacts/experiments" / selected["name"] / "history.json")
-    epoch_seconds = selected_history[-1]["elapsed_seconds"]/len(selected_history)
-    public = read(c.ROOT / "artifacts/provenance/kaggle_GetCompetition.txt")
-    deadline = datetime.fromisoformat(public["deadline"].replace("Z","+00:00")).timestamp()
-    remaining = deadline-datetime.now(timezone.utc).timestamp()
-    # Only spend more compute when the learning curve and measured runtime justify it.
-    # Reserve confirmation, a full-data refit, verification, and 15 minutes for recovery.
-    still_improving = len(selected_history)>1 and selected_history[-1]["macro_f1"] > selected_history[-2]["macro_f1"]+.001
-    extra_budget = epoch_seconds*(3+3*1.35+3*1.7)+15*60
+    # Replay the documented search plan, independent of today's date.
+    # The original hackathon run was deadline-gated; portfolio reproduction
+    # must never choose a different experiment because the deadline passed.
     name = "tail2_higher_lr_fold0"
     candidate_dir = c.ROOT / "artifacts/experiments" / name
-    existing_candidate = candidate_dir.joinpath("history.json").exists()
-    if existing_candidate or (still_improving and remaining > extra_budget and selected["macro_f1"] < .985):
-        if not existing_candidate:
-            print("Learning curve and measured runtime justify one higher-LR experiment",flush=True)
-            c.train_model(name,fold=0,epochs=3,lr=1e-4,weight_power=selected["weight_power"],init_c=init_c)
-        history = read(c.ROOT / "artifacts/experiments" / name / "history.json")
-        best = max(history,key=lambda row:row["macro_f1"])
-        summary.append(select_decision_rule({"name":name,"weight_power":selected["weight_power"],"macro_f1":best["macro_f1"],
-                        "epoch":best["epoch"],"learning_rate":1e-4}))
-        c.dump(c.ROOT / "artifacts/experiments/comparison.json",summary)
-        selected = max(summary,key=lambda row:row["macro_f1"])
+    if not candidate_dir.joinpath("history.json").exists():
+        c.train_model(name, fold=0, epochs=3, lr=1e-4,
+                      weight_power=selected["weight_power"], init_c=init_c)
+    history = read(candidate_dir / "history.json")
+    best = max(history, key=lambda row: row["macro_f1"])
+    summary.append(select_decision_rule({
+        "name": name, "weight_power": selected["weight_power"],
+        "macro_f1": best["macro_f1"], "epoch": best["epoch"],
+        "learning_rate": 1e-4,
+    }))
+    c.dump(c.ROOT / "artifacts/experiments/comparison.json", summary)
+    selected = max(summary, key=lambda row: row["macro_f1"])
     train,_,folds = c.frames()
     dev_config = read(c.ROOT / "artifacts/experiments" / selected["name"] / "config.json")
     confirmation_rows = int((folds.fold != 1).sum())

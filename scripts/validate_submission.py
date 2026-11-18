@@ -8,6 +8,7 @@ import json
 import math
 from collections import Counter
 from pathlib import Path
+from project_contract import validate_submission_records
 
 ROOT = Path(__file__).resolve().parents[1]
 LABELS = {"BENIGN", "JAILBREAK", "PROMPT_INJECTION"}
@@ -45,7 +46,7 @@ def main():
     assert all(ids) and len(set(ids)) == len(ids)
     assert set(ids) == {row["id"] for row in test} == {row["id"] for row in sample}
     assert ids == [row["id"] for row in sample], "Submission must follow the sample order"
-    assert all(row["label"] in LABELS and set(row) == {"id", "label"} for row in submission)
+    validate_submission_records(submission, [row["id"] for row in sample], LABELS)
     audit = json.loads((ROOT / "artifacts/audit/report.json").read_text(encoding="utf-8"))
     for filename, metadata in audit["files"].items():
         assert sha256(ROOT / "dataset" / filename) == metadata["sha256"], f"Original dataset was modified: {filename}"

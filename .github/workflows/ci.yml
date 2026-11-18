@@ -1,0 +1,38 @@
+name: Source quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-contracts:
+    name: Offline pipeline contracts (Python 3.12)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout public source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run dependency-free tests
+        run: python -m unittest discover -s tests -v
+      - name: Verify tracked-source privacy boundary
+        shell: bash
+        run: |
+          python - <<'PY'
+          import subprocess
+          tracked = subprocess.check_output(["git", "ls-files"], text=True).splitlines()
+          forbidden = ("dataset/", "submission/", "artifacts/", ".venv/", ".cache/")
+          invalid = [path for path in tracked if path.startswith(forbidden)]
+          if invalid:
+              raise SystemExit(f"Private/generated files tracked: {invalid}")
+          print(f"Public source boundary OK ({len(tracked)} tracked files)")
+          PY

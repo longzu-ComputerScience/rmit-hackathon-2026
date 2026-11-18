@@ -32,6 +32,7 @@ from sklearn.metrics import classification_report, confusion_matrix, f1_score
 from sklearn.preprocessing import StandardScaler
 from transformers import AutoConfig, AutoModel, AutoTokenizer
 from transformers.models.modernbert.modeling_modernbert import ModernBertEncoderLayer
+from project_contract import MODEL_WEIGHTS, trim_head_tail
 
 LABELS = ["BENIGN", "JAILBREAK", "PROMPT_INJECTION"]
 SEED = 20261022
@@ -92,11 +93,7 @@ def tokenize(max_length):
                 raise ValueError(f"Cache provenance changed for {field}; use a separate cache directory")
     ids = []
     for tokens in raw:
-        if len(tokens) > max_length - 2:
-            # Preserve the request at the start AND instructions often hidden at the end.
-            budget = max_length - 2
-            tail = budget // 4
-            tokens = tokens[:budget-tail] + tokens[-tail:]
+        tokens = trim_head_tail(tokens, max_length)
         # Gemma's fast tokenizer applies these in its Rust postprocessor; its
         # generic build_inputs_with_special_tokens method does not add them.
         ids.append([tokenizer.bos_token_id] + tokens + [tokenizer.eos_token_id])
@@ -246,7 +243,7 @@ def initialize_tail():
     cfg = config()
     model = TailClassifier(cfg)
     # Read only the last layers from the official torch weights using mmap and weights_only.
-    state = torch.load(PRETRAINED / "pytorch_model.bin", map_location="cpu", weights_only=True, mmap=True)
+    state = torch.load(PRETRAINED / MODEL_WEIGHTS, map_location="cpu", weights_only=True, mmap=True)
     translated = {}
     for name in model.state_dict():
         if name.startswith("classifier."):
@@ -290,7 +287,7 @@ def refine_cache():
         return
     cfg = config()
     layers = torch.nn.ModuleList([ModernBertEncoderLayer(cfg, i) for i in range(FROZEN, TRAIN_FROM)])
-    state = torch.load(PRETRAINED / "pytorch_model.bin", map_location="cpu", weights_only=True, mmap=True)
+    state = torch.load(PRETRAINED / MODEL_WEIGHTS, map_location="cpu", weights_only=True, mmap=True)
     for j, layer in enumerate(layers):
         prefix = f"model.layers.{FROZEN+j}."
         layer.load_state_dict({k[len(prefix):]:v for k,v in state.items() if k.startswith(prefix)})

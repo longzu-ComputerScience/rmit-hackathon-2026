@@ -1,4 +1,7 @@
-# PyTorch 2.9.1+cpu is provided by the host; install its matching wheel for other devices.
+# Python 3.12; tested with torch 2.9.1+cpu on Windows.
+# For a CPU-only install, install torch first from the official CPU wheel index
+# (see docs/REPRODUCIBILITY.md), then install this file.
+torch==2.9.1
 transformers==4.57.6
 huggingface-hub==0.36.2
 safetensors==0.8.0

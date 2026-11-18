@@ -12,6 +12,7 @@ import pandas as pd
 from scipy.stats import ks_2samp
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import StratifiedGroupKFold
+from project_contract import validate_group_folds
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "artifacts" / "audit"
@@ -124,8 +125,7 @@ def main() -> None:
     for fold, (_, valid) in enumerate(splitter.split(train, train.language + "_" + train.label, groups)):
         folds[valid] = fold
     assignments = pd.DataFrame({"id": train.id, "group": groups, "fold": folds})
-    assert assignments.groupby("group").fold.nunique().max() == 1
-    assert (folds >= 0).all()
+    validate_group_folds(groups.tolist(), folds.tolist())
     assignments.to_csv(OUT / "folds.csv", index=False)
     report["fold_counts"] = pd.crosstab(folds, train.label).to_dict()
     report["fold_language_class_counts"] = grouped.assign(fold=folds).groupby(["fold", "language", "label"]).size().to_dict()
